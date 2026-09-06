@@ -1,0 +1,26 @@
+﻿rules_version = ''2'';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Productos: lectura public, escritura solo dueño (validar via app, ideal con auth)
+    match /productos/{docId} {
+      allow read: if true;
+      allow write: if true; // TODO: migrar a request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == "dueño"
+    }
+    match /ventas/{docId} {
+      allow read, write: if true; // TODO: auth
+    }
+    match /clientesFiado/{docId} {
+      allow read, write: if true;
+    }
+    match /cierres/{docId} {
+      allow read, write: if true;
+    }
+    match /backups/{docId} {
+      allow read, write: if true;
+    }
+    // Bloquear todo lo demás
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

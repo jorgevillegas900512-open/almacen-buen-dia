@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Almacén Buen Día - PRO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2áfamily=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>*{font-family:Inter,system-ui,sans-serif} .scroll-thin::-webkit-scrollbar{width:6px;height:6px} .scroll-thin::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px} @media print{.no-print{display:none!important} body{background:white!important}}</style>
+<script>window.addEventListener("error", e=>{ if(e.target && e.target.src && e.target.src.includes("tailwindcss")){ console.log("Tailwind CDN fallo - modo offline-fallback"); var s=document.createElement("style"); s.textContent="/* offline-fallback: estilos básicos si Tailwind no carga */ body{font-family:Inter,system-ui} .bg-\[#00387A\]{background:#00387A} .bg-\[#1A1A2E\]{background:#1A1A2E}"; document.head.appendChild(s); }}, true);</script><!-- React 18 UMD -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#F0F2F5] min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useRef, useMemo} = React;
+
+// ================= CONFIG =================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAmcFaDhYhZS0bamqeQKfFTjhEJp9UcA18",
+  authDomain: "almacen-buendia.firebaseapp.com",
+  projectId: "almacen-buendia",
+  storageBucket: "almacen-buendia.firebasestorage.app",
+  messagingSenderId: "883137207331",
+  appId: "1:883137207331:web:04bab8fb45fda6d877e596"
+};
+
+const SEED_PRODUCTOS = [
+  {id:"1", nombre:"Leche Entera 1L La Serenisima", codigo:"7790742001234", precio:1200, costo:850, stock:48, categoria:"Lacteos"},
+  {id:"2", nombre:"Pan Lactal Fargo 500g", codigo:"7790742012345", precio:1850, costo:1200, stock:22, categoria:"Panificados"},
+  {id:"3", nombre:"Yerba Playadito 1kg", codigo:"7790742023456", precio:3200, costo:2100, stock:35, categoria:"Almacen"},
+  {id:"4", nombre:"Aceite Natura 900ml", codigo:"7790742034567", precio:2100, costo:1500, stock:18, categoria:"Almacen"},
+  {id:"5", nombre:"Azucar Ledesma 1kg", codigo:"7790742045678", precio:1100, costo:700, stock:50, categoria:"Almacen"},
+  {id:"6", nombre:"Coca Cola 2.25L", codigo:"7790742056789", precio:2300, costo:1600, stock:30, categoria:"Bebidas"},
+  {id:"7", nombre:"Fideos Matarazzo 500g", codigo:"7790742067890", precio:950, costo:550, stock:60, categoria:"Almacen"},
+  {id:"8", nombre:"Queso Cremoso 1kg", codigo:"7790742078901", precio:5800, costo:4200, stock:12, categoria:"Lacteos"},
+  {id:"9", nombre:"Jamon Cocido kg", codigo:"7790742089012", precio:8900, costo:6500, stock:8, categoria:"Fiambres"},
+  {id:"10", nombre:"Huevos x12", codigo:"7790742090123", precio:2800, costo:2000, stock:25, categoria:"Granja"},
+  {id:"11", nombre:"Galletitas Oreo 118g", codigo:"7790742101234", precio:750, costo:450, stock:40, categoria:"Golosinas"},
+  {id:"12", nombre:"Cerveza Brahma 1L", codigo:"7790742112345", precio:1600, costo:1100, stock:36, categoria:"Bebidas"},
+  {id:"13", nombre:"Arroz Gallo Oro 1kg", codigo:"7790742123456", precio:1350, costo:900, stock:28, categoria:"Almacen"},
+  {id:"14", nombre:"Manteca La Paulina 200g", codigo:"7790742134567", precio:1450, costo:950, stock:20, categoria:"Lacteos"},
+];
+const SEED_FIADOS = [
+  {id:"f1", nombre:"Marta - Casa 12", telefono:"11-5555-0012", deuda:18750, limite:30000, historial:[{fecha:new Date().toISOString(), tipo:"compra", monto:3200, desc:"Compra almacénn"}]},
+  {id:"f2", nombre:"Carlos - Kiosco esquina", telefono:"11-5555-0034", deuda:8400, limite:20000, historial:[]},
+  {id:"f3", nombre:"Familia Gomez", telefono:"11-5555-0056", deuda:32100, limite:50000, historial:[]},
+];
+const SEED_USUARIOS_PLAIN = [
+  {user:"dueño", pass:"1234", rol:"dueño", nombre:"Dueño"},
+  {user:"maria", pass:"1234", rol:"empleado", nombre:"María"},
+  {user:"jorge", pass:"1234", rol:"empleado", nombre:"Jorge"},
+];
+
+// ============ UTILS ============
+const fmtMoney = n => "$" + Number(n||0).toLocaleString("es-AR");
+const hoyISO = () => new Date().toISOString().split("T")[0];
+const loadLS = (k, def) => { try{ const v=localStorage.getItem(k); return v? JSON.parse(v): def; }catch{return def} };
+const saveLS = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} };
+async function hashPass(str){
+  try{
+    const enc = new TextEncoder().encode(str);
+    const buf = await crypto.subtle.digest("SHA-256", enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch{ return "hash_"+str } // fallback
+}
+function validarProducto(p, lista, editId){
+  const e=[];
+  if(!p.nombre || p.nombre.trim().length<3) e.push("Nombre mínimo 3 caracteres");
+  if(!p.codigo || !/^[0-9]{6,14}$/.test(p.codigo.trim())) e.push("Código debe ser 6-14 dígitos");
+  if(lista.some(x=> x.codigo===p.codigo.trim() && x.id!==editId)) e.push("Código ya existe");
+  if(!(p.precio>0)) e.push("Precio debe ser >0");
+  if(!(p.costo>=0)) e.push("Costo no puede ser negativo");
+  if(p.costo>p.precio) e.push("Costo no puede ser mayor al precio");
+  if(!(Number.isInteger(p.stock) && p.stock>=0)) e.push("Stock debe ser entero >=0");
+  if(!p.categoria) e.push("Categoría requerida");
+  return e;
+}
+
+// ============ ICONOS SVG INLINE (sin lucide pesado) ============
+const Icon = ({d, size=18}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+
+// ============ TOAST ============
+function useToast(){
+  const [toasts, setToasts] = useState([]);
+  const push = (msg, type="ok") => {
+    const id=Date.now()+Math.random();
+    setToasts(t=> [...t, {id,msg,type}]);
+    setTimeout(()=> setToasts(t=> t.filter(x=>x.id!==id)), 3000);
+  };
+  const ToastContainer = () => (
+    <div className="fixed top-4 right-4 z-[100] space-y-2">
+      {toasts.map(t=> (
+        <div key={t.id} className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium border ${t.type==="error"?"bg-red-50 border-red-200 text-red-700": t.type==="warn"?"bg-amber-50 border-amber-200 text-amber-800":"bg-emerald-50 border-emerald-200 text-emerald-800"}`}>{t.msg}</div>
+      ))}
+    </div>
+  );
+  return {push, ToastContainer};
+}
+
+// ============ APP ============
+function App(){
+  const {push, ToastContainer} = useToast();
+
+  // --- PERSISTED STATE ---
+  const [productos, setProductos] = useState(()=> loadLS("bd_productos", SEED_PRODUCTOS));
+  const [ventas, setVentas] = useState(()=> loadLS("bd_ventas", []));
+  const [fiados, setFiados] = useState(()=> loadLS("bd_fiados", SEED_FIADOS));
+  const [logs, setLogs] = useState(()=> loadLS("bd_logs", []));
+  const [usuarios, setUsuarios] = useState(()=> loadLS("bd_usuarios_hash", null) || (()=> {
+    // migrar plain -> hash async, mientras tanto plain
+    const hashed = loadLS("bd_usuarios", SEED_USUARIOS_PLAIN);
+    return hashed;
+  })());
+  const [cierres, setCierres] = useState(()=> loadLS("bd_cierres", []));
+  const [user, setUser] = useState(()=> { try{return localStorage.getItem("bd_user")}catch{return null}});
+  const [tab, setTab] = useState("pos");
+  const [hora, setHora] = useState(new Date());
+  const [estadoNube, setEstadoNube] = useState("local"); // local | conectando | conectado | error
+  const firestoreRef = useRef(null);
+
+  // login
+  const [loginUser, setLoginUser] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [intentos, setIntentos] = useState(0);
+  const [bloqueoHasta, setBloqueoHasta] = useState(null);
+  const [segRestantes, setSegRestantes] = useState(0);
+
+  // pos
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroLetra, setFiltroLetra] = useState("TODAS");
+  const [códigoBarras, setCódigoBarras] = useState("");
+  const [carrito, setCarrito] = useState([]);
+  const [metodoPago, setMetodoPago] = useState("efectivo");
+  const [clienteFiado, setClienteFiado] = useState("");
+  const [cantidadTeclado, setCantidadTeclado] = useState("1");
+  const [showScanner, setShowScanner] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // stock modal
+  const [prodEdit, setProdEdit] = useState(null);
+  const [stockSearch, setStockSearch] = useState("");
+  const [stockCat, setStockCat] = useState("TODAS");
+  const [stockPag, setStockPag] = useState(0);
+  const STOCK_POR_PAG = 8;
+  const [margenInput, setMargenInput] = useState("40");
+  const [seleccionados, setSeleccionados] = useState(new Set());
+
+  // fiados
+  const [cobroModal, setCobroModal] = useState(null); // {id, monto}
+  const [clienteEdit, setClienteEdit] = useState(null);
+
+  // seguridad
+  const [cambioPassOpen, setCambioPassOpen] = useState(false);
+  const [nuevaPass, setNuevaPass] = useState("");
+  const [editUserPass, setEditUserPass] = useState(null); // user id
+  const [editUserPassVal, setEditUserPassVal] = useState("");
+
+  // cierres ticket
+  const [ventaTicket, setVentaTicket] = useState(null);
+
+  const usuarioActual = useMemo(()=> usuarios.find(u=>u.user===user), [user, usuarios]);
+  const esDueno = usuarioActual?.rol==="dueño";
+
+  // ====== EFECTOS GENERALES ======
+  useEffect(()=>{ const id=setInterval(()=>setHora(new Date()),1000); return()=>clearInterval(id)},[]);
+  useEffect(()=>{
+    if(bloqueoHasta){
+      const id=setInterval(()=>{
+        const s=Math.ceil((bloqueoHasta - Date.now())/1000);
+        if(s<=0){ setBloqueoHasta(null); setSegRestantes(0); setIntentos(0); clearInterval(id); }
+        else setSegRestantes(s);
+      },500);
+      return()=>clearInterval(id);
+    }
+  },[bloqueoHasta]);
+
+  // persist
+  useEffect(()=>saveLS("bd_productos", productos),[productos]);
+  useEffect(()=>saveLS("bd_ventas", ventas),[ventas]);
+  useEffect(()=>saveLS("bd_fiados", fiados),[fiados]);
+  useEffect(()=>saveLS("bd_logs", logs),[logs]);
+  useEffect(()=>saveLS("bd_cierres", cierres),[cierres]);
+  // usuarios: guardamos siempre, si tiene hash guardamos hash, sino plain (migración)
+  useEffect(()=>{
+    // si usuarios tiene pass con longitud 64 (sha256) lo guardamos en bd_usuarios_hash
+    const hasHash = usuarios.some(u=> u.pass && u.pass.length===64);
+    if(hasHash) saveLS("bd_usuarios_hash", usuarios);
+    else saveLS("bd_usuarios", usuarios);
+  },[usuarios]);
+
+  // inactividad 15min
+  useEffect(()=>{
+    if(!user) return;
+    let t;
+    const reset = () => {
+      clearTimeout(t);
+      t = setTimeout(()=>{ addLog("Sesión cerrada por inactividad 15min"); setUser(null); try{localStorage.removeItem("bd_user")}catch{}; push("Sesión cerrada por inactividad","warn"); }, 900000);
+    };
+    const evs=["mousemove","keydown","click","touchstart"];
+    evs.forEach(e=> window.addEventListener(e, reset));
+    reset();
+    return ()=>{ clearTimeout(t); evs.forEach(e=> window.removeEventListener(e, reset)); };
+  },[user]);
+
+  // backup auto 5min + a Firestore coleccián backups (si conectado)
+  useEffect(()=>{
+    const id=setInterval(()=>{ 
+      try{ 
+        const data={productos, ventas, fiados, fecha:new Date().toISOString()};
+        localStorage.setItem("bd_backup_auto", JSON.stringify(data));
+        // subir a Firestore si hay conexián
+        if(firestoreRef.current && estadoNube==="conectado"){
+          const bid="auto_"+hoyISO();
+          firestoreRef.current.collection("backups").doc(bid).set({...data, tipo:"auto", fecha: new Date().toISOString()}).catch(()=>{});
+        }
+      }catch{} 
+    }, 300000);
+    return()=>clearInterval(id);
+  },[productos,ventas,fiados,estadoNube]);
+
+  // Firebase init (compat)
+  useEffect(()=>{
+    let unsubProd=null, unsubVentas=null, unsubFiados=null;
+    let cancelado=false;
+    const init = async () => {
+      try{
+        const ensureFirebase = async () => {
+          if(window.firebase && window.firebase.firestore) return window.firebase;
+          setEstadoNube("conectando");
+          const loadScript = (src)=> new Promise((res,rej)=>{
+            const s=document.createElement("script"); s.src=src; s.async=true; s.onload=res; s.onerror=rej; document.head.appendChild(s);
+          });
+          try{
+            await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+            await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js");
+            return window.firebase;
+          }catch(e){ throw e; }
+        };
+        const fb = await ensureFirebase();
+        if(cancelado) return;
+        try{
+          if(fb.apps && fb.apps.length===0) fb.initializeApp(FIREBASE_CONFIG);
+          else if(!fb.apps) try{ fb.initializeApp(FIREBASE_CONFIG);}catch{}
+        }catch{}
+        const db = fb.firestore();
+        firestoreRef.current = db;
+        // productos
+        unsubProd = db.collection("productos").onSnapshot(snap=>{
+          if(snap.empty){ setEstadoNube("conectado"); return; }
+          const data = snap.docs.map(d=>d.data());
+          if(data.length>0) setProductos(data);
+          setEstadoNube("conectado");
+        }, err=>{ console.warn(err); setEstadoNube("error"); });
+        // ventas
+        unsubVentas = db.collection("ventas").orderBy("fecha","desc").limit(100).onSnapshot(snap=>{
+          const data = snap.docs.map(d=>d.data());
+          if(data.length>0){
+            setVentas(prev=>{
+              const map=new Map();
+              [...data, ...prev].forEach(v=> map.set(v.id, v));
+              return Array.from(map.values()).sort((a,b)=> b.fecha.localeCompare(a.fecha));
+            });
+            setEstadoNube("conectado");
+          }
+        }, err=> console.warn(err));
+        // fiados
+        unsubFiados = db.collection("clientesFiado").onSnapshot(snap=>{
+          const data=snap.docs.map(d=>d.data());
+          if(data.length>0) setFiados(data);
+          setEstadoNube("conectado");
+        }, err=> console.warn(err));
+        setTimeout(()=>{ if(!cancelado) setEstadoNube(s=> s==="conectando"?"conectado":s)}, 2500);
+      }catch(e){
+        console.warn("Firebase no disponible", e);
+        setEstadoNube("local");
+      }
+    };
+    init();
+    return ()=>{ cancelado=true; try{unsubProd&&unsubProd()}catch{} try{unsubVentas&&unsubVentas()}catch{} try{unsubFiados&&unsubFiados()}catch{} };
+  },[]);
+
+  // scanner
+  useEffect(()=>{
+    if(!showScanner) return;
+    let stream=null;
+    (async()=>{
+      try{
+        stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+        streamRef.current=stream;
+        if(videoRef.current) videoRef.current.srcObject=stream;
+      }catch(e){ console.warn(e); push("No se pudo abrir cámara","error"); setShowScanner(false);}
+    })();
+    return()=>{ try{ stream?.getTracks().forEach(t=>t.stop()); }catch{} if(streamRef.current){ try{streamRef.current.getTracks().forEach(t=>t.stop())}catch{} } };
+  },[showScanner]);
+
+  // helpers firestore save
+  const isDev = typeof location!=="undefined" && (location.hostname==="localhost" || location.hostname==="127.0.0.1");
+  const logWarn = (...a)=>{ if(isDev) console.warn(...a); };
+  const fbSaveProducto = (p)=>{ try{ firestoreRef.current?.collection("productos").doc(p.id).set(p).catch(e=>logWarn(e)); }catch{} };
+  const fbSaveVenta = (v)=>{ try{ firestoreRef.current?.collection("ventas").doc(v.id).set(v).catch(e=>logWarn(e)); }catch{} };
+  const fbSaveFiado = (f)=>{ try{ firestoreRef.current?.collection("clientesFiado").doc(f.id).set(f).catch(e=>logWarn(e)); }catch{} };
+  const fbDeleteProducto = (id)=>{ try{ firestoreRef.current?.collection("productos").doc(id).delete().catch(e=>logWarn(e)); }catch{} };
+
+  const addLog = (accion)=> {
+    const entry={fecha:new Date().toISOString(), usuario: user||"sistema", accion};
+    setLogs(prev=> [entry, ...prev].slice(0,200));
+  };
+
+  // ====== LOGIN CON HASH ======
+  const handleLogin = async () => {
+    if(bloqueoHasta && Date.now()<bloqueoHasta) return;
+    const u = usuarios.find(x=> x.user===loginUser);
+    if(!u){ const n=intentos+1; setIntentos(n); if(n>=3){ setBloqueoHasta(Date.now()+30000); setSegRestantes(30);} else push("Usuario o clave incorrecta","error"); return; }
+    // soportar plain y hash
+    let passOk=false;
+    if(u.pass && u.pass.length===64){
+      const h=await hashPass(loginPass);
+      passOk = h===u.pass;
+    }else{
+      passOk = u.pass===loginPass;
+      // migrar a hash en background si ok
+      if(passOk){
+        hashPass(loginPass).then(h=>{
+          setUsuarios(prev=> prev.map(x=> x.user===u.user? {...x, pass:h}: x));
+        });
+      }
+    }
+    if(passOk){
+      setUser(u.user);
+      try{localStorage.setItem("bd_user", u.user)}catch{}
+      addLog(`Login ${u.user}`);
+      setIntentos(0);
+      push(`Bienvenido ${u.nombre}`);
+    }else{
+      const n=intentos+1;
+      setIntentos(n);
+      if(n>=3){ setBloqueoHasta(Date.now()+30000); setSegRestantes(30); }
+      else push("Usuario o clave incorrecta","error");
+    }
+  };
+
+  // ====== POS LOGIC ======
+  const productosFiltrados = useMemo(()=>{
+    let lst=[...productos];
+    if(filtroLetra!=="TODAS") lst=lst.filter(p=> p.nombre.trim().toUpperCase().startsWith(filtroLetra));
+    if(busqueda.trim()){
+      const q=busqueda.toLowerCase();
+      lst=lst.filter(p=> p.nombre.toLowerCase().includes(q) || p.codigo.includes(q) || p.categoria.toLowerCase().includes(q));
+    }
+    if(stockSearch.trim()){ /* no usar en pos */ }
+    // si código exacto, priorizar
+    if(códigoBarras.trim()){
+      const exact = productos.find(p=> p.codigo===códigoBarras.trim());
+      if(exact) return [exact];
+    }
+    return lst.slice(0,80);
+  },[productos, busqueda, filtroLetra, códigoBarras]);
+
+  const totalCarrito = useMemo(()=> carrito.reduce((s,p)=> s + p.precio * p.cantidad, 0),[carrito]);
+  const gananciaCarrito = useMemo(()=> carrito.reduce((s,p)=> s + (p.precio - p.costo)* p.cantidad, 0),[carrito]);
+  const cantCarrito = useMemo(()=> carrito.reduce((s,p)=> s+p.cantidad,0),[carrito]);
+
+  const agregarAlCarrito = (prod, cantOverride=null) => {
+    const cant = cantOverride!==null ? cantOverride : (parseInt(cantidadTeclado)||1);
+    if(cant<=0){ push("Cantidad inválida","error"); return; }
+    if(cant>999){ push("Cantidad máxima 999","error"); return; }
+    const existente = carrito.find(c=>c.id===prod.id);
+    const ya = existente? existente.cantidad : 0;
+    if(ya + cant > prod.stock){
+      push(`Stock insuficiente: ${prod.nombre} tiene ${prod.stock} u. Ya tenés ${ya} en carrito`,"error");
+      return;
+    }
+    setCarrito(prev=>{
+      if(prev.find(p=>p.id===prod.id)) return prev.map(p=> p.id===prod.id? {...p, cantidad: p.cantidad + cant}: p);
+      return [...prev, {...prod, cantidad: cant}];
+    });
+    push(`${prod.nombre} x${cant} agregado`);
+  };
+
+  const handleCódigoOk = () => {
+    const code=códigoBarras.trim();
+    if(!code) return;
+    const prod = productos.find(p=> p.codigo===code || p.id===code);
+    if(prod){ agregarAlCarrito(prod); setCódigoBarras(""); }
+    else{
+      // búsqueda difusa por nombre
+      const q=code.toLowerCase();
+      const cand = productos.find(p=> p.nombre.toLowerCase().includes(q));
+      if(cand){ agregarAlCarrito(cand); setCódigoBarras(""); }
+      else push("Código no encontrado","error");
+    }
+  };
+
+  const cobrar = () => {
+    if(carrito.length===0) return;
+    if(metodoPago==="fiado" && !clienteFiado){ push("Seleccion? cliente fiado","error"); return; }
+    // validar stock nuevamente
+    for(const item of carrito){
+      const prod = productos.find(p=>p.id===item.id);
+      if(!prod || item.cantidad > prod.stock){
+        push(`Stock insuficiente para ${item.nombre}`,"error");
+        return;
+      }
+    }
+    // validar límite fiado
+    if(metodoPago==="fiado"){
+      const cli = fiados.find(f=> f.id===clienteFiado);
+      if(cli && cli.deuda + totalCarrito > cli.limite){
+        push(`${cli.nombre} supera limite ${fmtMoney(cli.deuda+totalCarrito)} / Limite ${fmtMoney(cli.limite)} - bloqueado`, "error"); return;
+      }
+    }
+    const id=Date.now().toString();
+    const now=new Date();
+    const venta={
+      id,
+      fecha: hoyISO(),
+      hora: now.toLocaleTimeString("es-AR",{hour:"2-digit", minute:"2-digit"}),
+      timestamp: now.toISOString(),
+      items:[...carrito],
+      total: totalCarrito,
+      ganancia: gananciaCarrito,
+      usuario: user||"anon",
+      metodo: metodoPago,
+      clienteFiado: metodoPago==="fiado"? clienteFiado: null
+    };
+    setVentas(prev=> [venta, ...prev]);
+    fbSaveVenta(venta);
+    // descontar stock
+    setProductos(prev=> prev.map(p=>{
+      const it=carrito.find(c=>c.id===p.id);
+      if(it){
+        const np={...p, stock: Math.max(0, p.stock - it.cantidad)};
+        fbSaveProducto(np);
+        return np;
+      }
+      return p;
+    }));
+    // si fiado actualizar deuda
+    if(metodoPago==="fiado" && clienteFiado){
+      setFiados(prev=> prev.map(f=>{
+        if(f.id===clienteFiado){
+          const nf={...f, deuda: f.deuda + totalCarrito, historial: [...f.historial, {fecha: now.toISOString(), tipo:"compra", monto: totalCarrito, desc:`Venta ${id} - ${carrito.map(c=>c.nombre.slice(0,12)).join(", ")}`}]};
+          fbSaveFiado(nf);
+          return nf;
+        }
+        return f;
+      }));
+    }
+    addLog(`Venta ${fmtMoney(totalCarrito)} ${metodoPago} ${carrito.length} items`);
+    push(`Venta cobrada ${fmtMoney(totalCarrito)} - ${metodoPago.toUpperCase()}`);
+    setVentaTicket(venta); // mostrar ticket para imprimir
+    setCarrito([]);
+    setClienteFiado("");
+  };
+
+  // ====== DASHBOARD CALCS ======
+  const ventasHoy = useMemo(()=> ventas.filter(v=> v.fecha===hoyISO()),[ventas]);
+  const totalHoy = ventasHoy.reduce((s,v)=>s+v.total,0);
+  const gananciaHoy = ventasHoy.reduce((s,v)=>s+v.ganancia,0);
+  const promedioHoy = ventasHoy.length? totalHoy/ventasHoy.length:0;
+  const valorizado = productos.reduce((s,p)=>s+p.precio*p.stock,0);
+  const costoValorizado = productos.reduce((s,p)=>s+p.costo*p.stock,0);
+  const deudaTotal = fiados.reduce((s,f)=>s+f.deuda,0);
+  const horasVentas = useMemo(()=>{
+    // 0-23h para cubrir todo el día
+    return Array.from({length:24},(_,h)=>{
+      const lista=ventasHoy.filter(v=> {
+        const hh=parseInt((v.hora||"0:0").split(":")[0]);
+        return hh===h;
+      });
+      return {hora:`${String(h).padStart(2,"0")}:00`, total: lista.reduce((s,v)=>s+v.total,0), cant:lista.length};
+    }).filter((_,i)=> i>=7 && i<=22); // mostrar 7-22 para no saturar, pero incluye todas
+  },[ventasHoy]);
+  const topProductos = useMemo(()=>{
+    const map=new Map();
+    ventas.forEach(v=> v.items.forEach(it=>{
+      const cur=map.get(it.id) || {nombre:it.nombre, cant:0, total:0};
+      cur.cant+=it.cantidad;
+      cur.total+=it.precio*it.cantidad;
+      map.set(it.id, cur);
+    }));
+    return Array.from(map.values()).sort((a,b)=>b.cant-a.cant).slice(0,6);
+  },[ventas]);
+
+  // ====== STOCK ======
+  const productosStockFiltrados = useMemo(()=>{
+    let lst=[...productos];
+    if(stockCat!=="TODAS") lst=lst.filter(p=> p.categoria===stockCat);
+    if(stockSearch.trim()){
+      const q=stockSearch.toLowerCase();
+      lst=lst.filter(p=> p.nombre.toLowerCase().includes(q) || p.codigo.includes(q));
+    }
+    return lst;
+  },[productos, stockCat, stockSearch]);
+  const stockPaginas = Math.ceil(productosStockFiltrados.length / STOCK_POR_PAG);
+  const stockPaginaActual = productosStockFiltrados.slice(stockPag*STOCK_POR_PAG, (stockPag+1)*STOCK_POR_PAG);
+  const categorias = useMemo(()=> ["TODAS", ...Array.from(new Set(productos.map(p=>p.categoria)))],[productos]);
+
+  const guardarProducto = (p)=>{
+    const errs=validarProducto(p, productos, p.id);
+    if(errs.length){ push(errs[0],"error"); return false; }
+    const existe=productos.find(x=>x.id===p.id);
+    if(existe){
+      setProductos(prev=> prev.map(x=> x.id===p.id? p: x));
+      addLog(`Editó producto ${p.nombre}`);
+    }else{
+      setProductos(prev=> [...prev, p]);
+      addLog(`Creó producto ${p.nombre}`);
+    }
+    fbSaveProducto(p);
+    push("Producto guardado");
+    setProdEdit(null);
+    return true;
+  };
+
+  // ====== FIADOS COBRO ======
+  const cobrarFiado = () => {
+    if(!cobroModal) return;
+    const monto=parseInt(cobroModal.monto);
+    if(!monto || monto<=0){ push("Monto inválido","error"); return; }
+    const cli=fiados.find(f=> f.id===cobroModal.id);
+    if(!cli) return;
+    if(monto>cli.deuda){ push(`Monto mayor a deuda ${cli.deuda}`,"error"); return; }
+    const now=new Date();
+    const nf={...cli, deuda: Math.max(0, cli.deuda - monto), historial:[...cli.historial, {fecha: now.toISOString(), tipo:"pago", monto, desc:"Pago parcial"}]};
+    setFiados(prev=> prev.map(f=> f.id===cli.id? nf: f));
+    fbSaveFiado(nf);
+    const ventaPago={id: Date.now().toString(), fecha: hoyISO(), hora: now.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}), timestamp: now.toISOString(), items:[], total:monto, ganancia:monto, usuario:user, metodo:"efectivo", clienteFiado: cli.id, esPagoFiado:true };
+    setVentas(prev=> [ventaPago, ...prev]);
+    fbSaveVenta(ventaPago);
+    addLog(`Cobro fiado ${cli.nombre} ${monto}`);
+    push(`Cobrado ${monto} a ${cli.nombre}`);
+    setCobroModal(null);
+  };
+
+  // ====== SINCRONIZAR ======
+  const sincronizarAhora = async () => {
+    if(!firestoreRef.current){ push("Firebase no conectado - sigue en local","warn"); return; }
+    setEstadoNube("conectando");
+    try{
+      const batch = firestoreRef.current.batch();
+      let count=0;
+      productos.forEach(p=>{ batch.set(firestoreRef.current.collection("productos").doc(p.id), p); count++; });
+      ventas.slice(0,100).forEach(v=>{ batch.set(firestoreRef.current.collection("ventas").doc(v.id), v); });
+      fiados.forEach(f=>{ batch.set(firestoreRef.current.collection("clientesFiado").doc(f.id), f); });
+      // Firestore batch max 500, si >500 dividir (simplificado: usar set individual si >400)
+      if(count>400){
+        for(const p of productos) await firestoreRef.current.collection("productos").doc(p.id).set(p);
+        for(const v of ventas.slice(0,100)) await firestoreRef.current.collection("ventas").doc(v.id).set(v);
+        for(const f of fiados) await firestoreRef.current.collection("clientesFiado").doc(f.id).set(f);
+      }else{
+        await batch.commit();
+      }
+      setEstadoNube("conectado");
+      addLog("Sincronizacián manual completa");
+      push("áSincronizado a la nube!");
+    }catch(e){ console.warn(e); setEstadoNube("error"); push("Error al sincronizar","error"); }
+  };
+
+  // ============ RENDER LOGIN ============
+  if(!user){
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-[400px] bg-white rounded-[16px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-8 border border-black/5">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-11 h-11 rounded-xl bg-[#00387A] flex items-center justify-center text-white text-xl">🕐</div>
+            <div>
+              <div className="font-black text-[18px] leading-none text-[#1A1A2E]">ALMACáN BUEN DáA</div>
+              <div className="text-xs text-gray-500 font-medium">Sistema PRO ? Seguro</div>
+            </div>
+          </div>
+          <h2 className="font-bold text-xl mb-1">Ingresar</h2>
+          <p className="text-sm text-gray-500 mb-6">Usuario y clave. Demo: dueño/1234, maria/1234</p>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-700">Usuario</label>
+              <input value={loginUser} onChange={e=>setLoginUser(e.target.value)} placeholder="dueño, maria, jorge"
+                className="mt-1 w-full h-11 px-3 rounded-lg border border-gray-200 focus:border-[#00387A] focus:ring-2 focus:ring-[#00387A]/20 outline-none text-sm"/>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-700">Contraseña</label>
+              <div className="relative mt-1">
+                <input type={showPass?"text":"password"} value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=> e.key==="Enter" && handleLogin()}
+                  placeholder="••••" className="w-full h-11 pl-3 pr-10 rounded-lg border border-gray-200 focus:border-[#00387A] focus:ring-2 focus:ring-[#00387A]/20 outline-none text-sm"/>
+                <button onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">{showPass?"á?":"🕐?"}</button>
+              </div>
+            </div>
+            {bloqueoHasta && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                ? Bloqueado {segRestantes}s por 3 intentos fallidos
+              </div>
+            )}
+            <button onClick={handleLogin} disabled={!!bloqueoHasta} className="w-full h-11 rounded-lg bg-[#00387A] text-white font-semibold hover:bg-[#002a5c] disabled:opacity-50 disabled:cursor-not-allowed">
+              Entrar
+            </button>
+            <div className="text-[11px] text-gray-400 text-center">dueño/1234 ? maria/1234 ? jorge/1234</div>
+            <div className="flex justify-center text-[11px]">
+              {estadoNube==="conectado"? <span className="text-emerald-600 font-semibold">? Nube lista</span> :
+               estadoNube==="conectando"? <span className="text-blue-600">? Conectando?</span> :
+               <span className="text-amber-600 font-semibold">? Modo local activo</span>}
+            </div>
+          </div>
+        </div>
+        <ToastContainer/>
+      </div>
+    );
+  }
+
+  // ============ RENDER APP ============
+  const NavItem = ({k, label, icon}) => {
+    const active=tab===k;
+    return (
+      <button onClick={()=>setTab(k)} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[13px] font-medium text-left transition ${active?"bg-white text-[#1A1A2E] shadow":"text-white/70 hover:bg-white/10 hover:text-white"}`}>
+        <span className="text-[16px] w-5 text-center">{icon}</span> {label}
+        {k==="dashboard" && ventasHoy.length>0 && !active && <span className="ml-auto w-2 h-2 bg-emerald-400 rounded-full animate-pulse"/>}
+      </button>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <ToastContainer/>
+      {/* HEADER */}
+      <header className="h-[64px] bg-[#00387A] text-white flex items-center justify-between px-4 md:px-6 sticky top-0 z-40">
+        <div className="flex items-center gap-4">
+          <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">🕐</div>
+          <div className="font-black tracking-wide text-[15px]">ALMACáN BUEN DáA</div>
+          <div className="hidden md:flex items-center gap-2 ml-4">
+            {estadoNube==="conectado"? <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-[11px] font-bold border border-emerald-400/30"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/> ? Nube Conectada</span>
+            : estadoNube==="conectando"? <span className="px-2.5 py-1 rounded-full bg-blue-400/20 text-blue-100 text-[11px] font-bold">? Conectando?</span>
+            : estadoNube==="error"? <span className="px-2.5 py-1 rounded-full bg-red-500/20 text-red-200 text-[11px] font-bold">? Error nube - Local</span>
+            : <span className="px-2.5 py-1 rounded-full bg-amber-400/20 text-amber-200 text-[11px] font-bold">? Modo Local</span>}
+            <span className={`hidden lg:inline text-[11px] px-2 py-1 rounded-full ${navigator.onLine?"bg-white/10 text-white/80":"bg-red-500/20 text-red-200"}`}>{navigator.onLine?"? Online":"? Offline"}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 text-xs text-white/80">🕐 {hora.toLocaleTimeString()} - {hora.toLocaleDateString("es-AR")}</div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-white text-[#00387A] flex items-center justify-center font-black text-xs">{usuarioActual?.nombre?.[0]}</div>
+            <div className="hidden md:block leading-tight text-left">
+              <div className="text-xs font-bold">{usuarioActual?.nombre}</div>
+              <div className="text-[10px] opacity-70 uppercase">{usuarioActual?.rol}</div>
+            </div>
+          </div>
+          <button onClick={()=>{addLog("Logout"); setUser(null); try{localStorage.removeItem("bd_user")}catch{}}} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center">á</button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 min-h-0">
+        {/* SIDEBAR */}
+        <aside className="w-[260px] bg-[#1A1A2E] text-white hidden md:flex flex-col shrink-0">
+          <nav className="p-3 space-y-1 mt-2">
+            <NavItem k="pos" label="Punto de Venta" icon="á?"/>
+            <NavItem k="dashboard" label="Dashboard" icon="á?"/>
+            <NavItem k="stock" label="Stock" icon="á?"/>
+            <NavItem k="fiados" label="Fiados" icon="á?"/>
+            <NavItem k="cierres" label="Cierres" icon="á?"/>
+            <NavItem k="seguridad" label="Seguridad" icon="🕐?"/>
+            <NavItem k="db" label="Base de Datos" icon="🕐?"/>
+          </nav>
+          <div className="mt-auto p-4">
+            <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+              <div className="text-[11px] text-white/60 font-semibold mb-1">ESTADO SISTEMA</div>
+              <div className="text-xs">Ventas hoy: {ventasHoy.length}</div>
+              <div className="text-xs text-white/70">{fmtMoney(totalHoy)}</div>
+              <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-emerald-400" style={{width:`${Math.min(100,totalHoy/50000*100)}%`}}/></div>
+              {productos.filter(p=>p.stock<=10).length>0 && <div className="mt-2 text-[11px] text-amber-300 flex items-center gap-1">🕐 {productos.filter(p=>p.stock<=10).length} prod. stock bajo</div>}
+            </div>
+          </div>
+        </aside>
+
+        {/* MOBILE NAV */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1A1A2E] text-white flex z-30 border-t border-white/10 overflow-x-auto">
+          {[
+            {k:"pos", label:"POS", icon:"á?"},
+            {k:"dashboard", label:"Dash", icon:"á?"},
+            {k:"stock", label:"Stock", icon:"á?"},
+            {k:"fiados", label:"Fiados", icon:"á?"},
+            {k:"cierres", label:"Cierres", icon:"á?"},
+            {k:"seguridad", label:"Seg", icon:"🕐?"},
+            {k:"db", label:"DB", icon:"🕐?"},
+          ].map(i=> (
+            <button key={i.k} onClick={()=>setTab(i.k)} className={`flex-1 py-2.5 flex flex-col items-center gap-1 text-[10px] ${tab===i.k?"text-white bg-white/10":"text-white/60"}`}>
+              <span className="text-[16px]">{i.icon}</span>{i.label}
+            </button>
+          ))}
+        </div>
+
+        {/* MAIN */}
+        <main className="flex-1 min-w-0 p-3 md:p-5 pb-[80px] md:pb-5 overflow-auto">
+
+          {/* POS */}
+          {tab==="pos" && (
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 min-w-0 space-y-3">
+                <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-3 md:p-4">
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1 relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🕐</span>
+                      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar producto (nombre, código, categoría)..." className="w-full h-12 pl-10 pr-3 rounded-xl border border-gray-200 focus:border-[#00387A] focus:ring-2 focus:ring-[#00387A]/20 outline-none text-sm"/>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🕐</span>
+                        <input value={códigoBarras} onChange={e=>setCódigoBarras(e.target.value)} onKeyDown={e=> e.key==="Enter" && handleCódigoOk()} placeholder="Código barras" className="w-full md:w-[220px] h-12 pl-10 pr-3 rounded-xl border border-gray-200 focus:border-[#00387A] outline-none font-mono text-sm"/>
+                      </div>
+                      <button onClick={()=>setShowScanner(!showScanner)} className="h-12 w-12 rounded-xl bg-[#1A1A2E] text-white flex items-center justify-center hover:bg-black" title="Escanear">🕐</button>
+                      <button onClick={handleCódigoOk} className="h-12 px-4 rounded-xl bg-[#00387A] text-white font-semibold text-sm">OK</button>
+                    </div>
+                  </div>
+                  {showScanner && (
+                    <div className="mt-3 rounded-xl overflow-hidden bg-black relative h-[200px]">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"/>
+                      <button onClick={()=>setShowScanner(false)} className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">á</button>
+                      <div className="absolute bottom-2 left-2 right-2 text-center text-white text-xs bg-black/50 py-1 rounded">Apunt? al código - luego ingresí manual si hace falta</div>
+                    </div>
+                  )}
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    <button onClick={()=>setFiltroLetra("TODAS")} className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${filtroLetra==="TODAS"?"bg-[#00387A] text-white border-[#00387A]":"bg-gray-50 text-gray-600 border-gray-200"}`}>TODAS</button>
+                    {Array.from({length:26},(_,i)=> String.fromCharCode(65+i)).map(l=> (
+                      <button key={l} onClick={()=>setFiltroLetra(l)} className={`w-7 h-7 rounded-full text-[11px] font-bold border ${filtroLetra===l?"bg-[#00387A] text-white border-[#00387A]":"bg-white text-gray-700 border-gray-200 hover:bg-gray-50"}`}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs font-bold text-gray-700">TECLADO CANTIDAD</div>
+                    <div className="text-[11px] text-gray-500">Cant: <span className="font-black text-[#00387A] text-sm">{cantidadTeclado}</span></div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {["7","8","9","C","4","5","6","x2","1","2","3","x5","0","?",".","OK"].map(k=> (
+                      <button key={k} onClick={()=>{
+                        if(k==="C") setCantidadTeclado("1");
+                        else if(k==="x2") setCantidadTeclado("2");
+                        else if(k==="x5") setCantidadTeclado("5");
+                        else if(k==="?") setCantidadTeclado(s=> s.length>1? s.slice(0,-1): "1");
+                        else if(k==="OK") {}
+                        else if(k==="." ) { if(!cantidadTeclado.includes(".")) setCantidadTeclado(s=> s+".") }
+                        else {
+                          if(cantidadTeclado==="1" && k!=="0") setCantidadTeclado(k);
+                          else setCantidadTeclado(s=> (s+k).slice(0,3));
+                        }
+                      }} className={`h-12 rounded-xl font-black text-[16px] border ${["C","x2","x5"].includes(k)?"bg-amber-50 border-amber-200 text-amber-800": k==="OK"?"bg-[#00387A] text-white border-[#00387A]":"bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100"}`}>{k}</button>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-2">
+                    <span className="px-2 py-1 rounded-full bg-gray-100">Stock se valida antes de agregar</span>
+                    <span className="px-2 py-1 rounded-full bg-red-50 text-red-600 border border-red-100">Límite fiado validado</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {productosFiltrados.length===0 && <div className="col-span-2 py-8 text-center text-gray-400 text-sm bg-white rounded-xl border border-dashed">Sin productos para "{busqueda || filtroLetra}"</div>}
+                  {productosFiltrados.map(p=> (
+                    <button key={p.id} onClick={()=>agregarAlCarrito(p)} className="bg-white rounded-xl border border-black/5 p-3 text-left hover:border-[#00387A]/30 hover:shadow-sm transition flex justify-between items-center">
+                      <div className="min-w-0">
+                        <div className="font-bold text-[13px] leading-tight truncate">{p.nombre} {p.stock<=10 && <span className="text-amber-600">🕐</span>}</div>
+                        <div className="text-[11px] text-gray-500 font-mono">{p.codigo} ? Stock {p.stock} {p.stock===0 && <span className="text-red-600 font-bold">SIN STOCK</span>}</div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="text-[13px] font-black text-[#00387A]">{fmtMoney(p.precio)}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{p.categoria}</span>
+                          <span className="text-[10px] text-gray-400">costo {fmtMoney(p.costo)}</span>
+                        </div>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-[#F0F2F5] flex items-center justify-center text-[#00387A]">+</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:w-[42%] shrink-0">
+                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-black/5 overflow-hidden sticky top-[76px]">
+                  <div className="bg-[#1A1A2E] text-white p-4">
+                    <div className="text-[11px] opacity-70 font-semibold tracking-widest">TOTAL A COBRAR</div>
+                    <div className="text-[42px] md:text-[52px] font-black leading-none tracking-tight">{fmtMoney(totalCarrito)}</div>
+                    <div className="flex gap-3 mt-2 text-[11px]">
+                      <span className="px-2 py-1 rounded-full bg-white/10">{cantCarrito} items</span>
+                      <span className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-200">Ganancia {fmtMoney(gananciaCarrito)}</span>
+                    </div>
+                  </div>
+                  <div className="p-3 space-y-2 max-h-[300px] overflow-auto scroll-thin">
+                    {carrito.length===0 && <div className="py-10 text-center text-gray-400 text-sm">Carrito vacáo - toc? un producto</div>}
+                    {carrito.map(it=> (
+                      <div key={it.id} className="flex items-center gap-2 p-2 rounded-xl bg-[#F0F2F5] border border-black/5">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-xs leading-tight truncate">{it.nombre}</div>
+                          <div className="text-[11px] text-gray-500">{fmtMoney(it.precio)} x {it.cantidad} = {fmtMoney(it.precio*it.cantidad)}</div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={()=> setCarrito(s=> s.map(p=> p.id===it.id? {...p, cantidad: Math.max(1,p.cantidad-1)}: p))} className="w-7 h-7 rounded-full bg-white border flex items-center justify-center">-</button>
+                          <span className="w-6 text-center text-xs font-bold">{it.cantidad}</span>
+                          <button onClick={()=>{
+                            const prod=productos.find(p=>p.id===it.id);
+                            if(prod && it.cantidad+1>prod.stock){ push(`Stock máximo ${prod.stock}`,"error"); return;}
+                            setCarrito(s=> s.map(p=> p.id===it.id? {...p,cantidad:p.cantidad+1}:p))
+                          }} className="w-7 h-7 rounded-full bg-white border flex items-center justify-center">+</button>
+                          <button onClick={()=> setCarrito(s=> s.filter(p=>p.id!==it.id))} className="w-7 h-7 rounded-full bg-red-50 text-red-600 border border-red-100 flex items-center justify-center ml-1">🕐</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-3 border-t space-y-3 bg-white">
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {k:"efectivo", label:"Efectivo", icon:"á?"},
+                        {k:"transferencia", label:"Transfer", icon:"á?"},
+                        {k:"fiado", label:"Fiado", icon:"á?"},
+                      ].map(o=> (
+                        <button key={o.k} onClick={()=>setMetodoPago(o.k)} className={`h-11 rounded-xl border font-bold text-[11px] flex flex-col items-center justify-center gap-0.5 ${metodoPago===o.k?"bg-[#00387A] text-white border-[#00387A]":"bg-white border-gray-200 text-gray-700"}`}>
+                          <span>{o.icon}</span>{o.label}
+                        </button>
+                      ))}
+                    </div>
+                    {metodoPago==="fiado" && (
+                      <select value={clienteFiado} onChange={e=>setClienteFiado(e.target.value)} className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm">
+                        <option value="">Seleccionar cliente fiado...</option>
+                        {fiados.map(f=> <option key={f.id} value={f.id}>{f.nombre} - Debe {fmtMoney(f.deuda)} / Límite {fmtMoney(f.limite)} {f.deuda>f.limite*0.8?"á?":""}</option>)}
+                      </select>
+                    )}
+                    <button onClick={cobrar} disabled={carrito.length===0} className="w-full h-[56px] rounded-xl bg-[#00387A] text-white font-black text-[16px] tracking-wide hover:bg-[#002a5c] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg">
+                      COBRAR {fmtMoney(totalCarrito)} - {metodoPago.toUpperCase()}
+                    </button>
+                    <button onClick={()=>setCarrito([])} className="w-full h-10 rounded-xl bg-gray-100 text-gray-600 font-semibold text-xs">Vaciar carrito</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DASHBOARD */}
+          {tab==="dashboard" && (
+            <div className="space-y-4">
+              {!esDueno && <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-sm">Dashboard completo solo para dueño. Vista limitada.</div>}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">VENTAS HOY</div>
+                  <div className="text-[28px] font-black text-[#1A1A2E]">{fmtMoney(totalHoy)}</div>
+                  <div className="text-[11px] text-gray-500">{ventasHoy.length} tickets ? Prom {fmtMoney(promedioHoy|0)}</div>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">GANANCIA HOY</div>
+                  <div className="text-[28px] font-black text-emerald-600">{fmtMoney(gananciaHoy)}</div>
+                  <div className="text-[11px] text-gray-500">{totalHoy?((gananciaHoy/totalHoy*100).toFixed(1)):0}% margen</div>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">STOCK VALORIZADO</div>
+                  <div className="text-[28px] font-black text-[#00387A]">{fmtMoney(valorizado)}</div>
+                  <div className="text-[11px] text-gray-500">Costo {fmtMoney(costoValorizado)}</div>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">FIADOS BARRIO</div>
+                  <div className="text-[28px] font-black text-amber-600">{fmtMoney(deudaTotal)}</div>
+                  <div className="text-[11px] text-gray-500">{fiados.length} clientes ? Bajo stock: {productos.filter(p=>p.stock<=10).length}</div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                  <div className="font-bold text-[13px] mb-3">VENTAS POR HORA (hoy, 7-22h)</div>
+                  <div className="flex items-end gap-1 h-[140px]">
+                    {horasVentas.map(h=> {
+                      const max=Math.max(1, ...horasVentas.map(x=>x.total));
+                      const pct=h.total/max*100;
+                      return (
+                        <div key={h.hora} className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full bg-[#00387A]/10 rounded-t-lg relative" style={{height:`${pct}%`, minHeight: h.total?"8px":"2px"}}>
+                            <div className="absolute bottom-0 left-0 right-0 bg-[#00387A] rounded-t-lg" style={{height:"100%", opacity:0.9}}/>
+                            {h.total>0 && <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-bold">${(h.total/1000).toFixed(0)}k</div>}
+                          </div>
+                          <div className="text-[9px] text-gray-500">{h.hora}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                  <div className="font-bold text-[13px] mb-3">TOP PRODUCTOS (histárico)</div>
+                  <div className="space-y-2">
+                    {topProductos.map((p,i)=> (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="text-xs font-medium truncate pr-2">{i+1}. {p.nombre.slice(0,28)}</div>
+                        <div className="text-[11px] font-bold bg-gray-100 px-2 py-0.5 rounded-full">{p.cant}u • {fmtMoney(p.total)}</div>
+                      </div>
+                    ))}
+                    {topProductos.length===0 && <div className="text-xs text-gray-400">Sin ventas aán</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-bold text-[13px] flex items-center gap-2"><span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"/> FEED VIVO DE VENTAS</div>
+                  <div className="flex gap-2">
+                    <button onClick={()=>{
+                      const csv = ["fecha,hora,usuario,metodo,total,ganancia,items", ...ventas.slice(0,100).map(v=> `${v.fecha},${v.hora},${v.usuario},${v.metodo},${v.total},${v.ganancia},"${v.items.map(i=> i.cantidad+"x "+i.nombre).join("; ")}"` )].join("\n");
+                      const blob=new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`ventas-${hoyISO()}.csv`; a.click();
+                    }} className="h-8 px-3 rounded-lg bg-[#1A1A2E] text-white text-xs font-bold">? CSV</button>
+                    <span className="text-[11px] text-gray-500 hidden md:inline">{estadoNube==="conectado"?"En vivo nube":"Local"} • {ventas.length} ventas</span>
+                  </div>
+                </div>
+                <div className="space-y-1 max-h-[280px] overflow-auto scroll-thin">
+                  {ventas.slice(0,20).map(v=> (
+                    <div key={v.id} className="flex items-center justify-between py-2 border-b border-gray-50 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-[11px] text-gray-400">{v.hora}</span>
+                        <span className="font-bold">{v.usuario}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${v.metodo==="efectivo"?"bg-emerald-50 text-emerald-700": v.metodo==="fiado"?"bg-amber-50 text-amber-700": v.esPagoFiado?"bg-blue-50 text-blue-700 border border-blue-200":"bg-blue-50 text-blue-700"}`}>{v.esPagoFiado?"pago fiado":v.metodo}</span>
+                        <span className="truncate max-w-[200px] hidden md:inline">{v.items.length? v.items.map(i=> `${i.cantidad}x ${i.nombre.slice(0,12)}`).join(", "): "?"}</span>
+                      </div>
+                      <div className="font-black shrink-0">{fmtMoney(v.total)}</div>
+                    </div>
+                  ))}
+                  {ventas.length===0 && <div className="text-sm text-gray-400 py-6 text-center">Aán no hay ventas - prob? el POS</div>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STOCK */}
+          {tab==="stock" && (
+            <div className="bg-white rounded-2xl border border-black/5 shadow-sm overflow-hidden">
+              <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b">
+                <div>
+                  <div className="font-black text-[16px]">STOCK - {productos.length} productos</div>
+                  <div className="text-xs text-gray-500">Valorizado {fmtMoney(valorizado)} ? Costo {fmtMoney(costoValorizado)} ? Ganancia potencial {fmtMoney(valorizado-costoValorizado)} ? Bajo stock (&le;10): {productos.filter(p=>p.stock<=10).length}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <input value={stockSearch} onChange={e=>{setStockSearch(e.target.value); setStockPag(0)}} placeholder="Buscar en stock..." className="h-9 px-3 rounded-lg border text-sm w-[220px]"/>
+                    <select value={stockCat} onChange={e=>{setStockCat(e.target.value); setStockPag(0)}} className="h-9 px-2 rounded-lg border text-sm">
+                      {categorias.map(c=> <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <div className="flex gap-1">
+                      <input id="stockBarcode" placeholder="Código barras → Enter para cargar" className="h-9 px-3 rounded-lg border text-sm font-mono w-[220px]" onKeyDown={e=>{
+                        if(e.key==="Enter"){
+                          const code=e.target.value.trim();
+                          if(!code) return;
+                          const exist=productos.find(p=>p.codigo===code);
+                          if(exist){ setProdEdit({...exist}); push(`Producto encontrado: ${exist.nombre}`); }
+                          else{ setProdEdit({id:Date.now().toString(), nombre:"", codigo:code, precio:1000, costo:700, stock:10, categoria:"Almacen"}); push(`Nuevo producto con código ${code}`); }
+                          e.target.value="";
+                        }
+                      }}/>
+                      <button onClick={()=>{
+                        const el=document.getElementById("stockBarcode");
+                        const code=el.value.trim();
+                        if(!code){ push("Ingres? código","error"); return; }
+                        const exist=productos.find(p=>p.codigo===code);
+                        if(exist){ setProdEdit({...exist}); push(`Encontrado: ${exist.nombre}`); }
+                        else{ setProdEdit({id:Date.now().toString(), nombre:"", codigo:code, precio:1000, costo:700, stock:10, categoria:"Almacen"}); push(`Nuevo código ${code}`); }
+                        if(el) el.value="";
+                      }} className="h-9 px-3 rounded-lg bg-white border font-bold text-xs">Cargar</button>
+                    </div>
+                  </div>
+                </div>
+                {esDueno && <button onClick={()=> setProdEdit({id:Date.now().toString(), nombre:"", codigo:"", precio:1000, costo:700, stock:10, categoria:"Almacen"})} className="h-10 px-4 rounded-xl bg-[#00387A] text-white font-bold text-sm">+ Nuevo producto</button>}
+              </div>
+                            <div className="mx-4 mt-3 p-3 rounded-xl bg-[#F0F2F5] border flex flex-col md:flex-row gap-3 items-end">
+                <div className="flex-1">
+                  <label className="text-xs font-bold text-gray-700">Margen % (sobre costo)</label>
+                  <div className="flex gap-2 mt-1">
+                    <input type="number" value={margenInput} onChange={e=>setMargenInput(e.target.value)} className="w-24 h-9 px-3 rounded-lg border text-sm" placeholder="40"/>
+                    <span className="text-xs text-gray-500 self-center">% → precio = costo × (1+margen/100)</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={()=>{
+                    const m=parseFloat(margenInput);
+                    if(isNaN(m) || m<0 || m>500){ push("Margen 0-500%","error"); return; }
+                    if(!confirm(`¿Aplicar ${m}% a TODOS los ${productos.length} productos?`)) return;
+                    const nuevos = productos.map(p=> {
+                      const nuevoPrecio = Math.round(p.costo * (1+m/100));
+                      const np={...p, precio: Math.max(1,nuevoPrecio)};
+                      fbSaveProducto(np);
+                      return np;
+                    });
+                    setProductos(nuevos);
+                    addLog(`Margen ${m}% aplicado a todos`);
+                    push(`Margen ${m}% aplicado a ${nuevos.length} productos`);
+                  }} className="h-9 px-4 rounded-lg bg-[#00387A] text-white font-bold text-xs">Aplicar a todos</button>
+                  <button onClick={()=>{
+                    const m=parseFloat(margenInput);
+                    if(isNaN(m) || m<0 || m>500){ push("Margen 0-500%","error"); return; }
+                    if(seleccionados.size===0){ push("Seleccion? al menos 1 producto (☑)","error"); return; }
+                    if(!confirm(`¿Aplicar ${m}% a ${seleccionados.size} seleccionados?`)) return;
+                    const nuevos = productos.map(p=> {
+                      if(!seleccionados.has(p.id)) return p;
+                      const nuevoPrecio = Math.round(p.costo * (1+m/100));
+                      const np={...p, precio: Math.max(1,nuevoPrecio)};
+                      fbSaveProducto(np);
+                      return np;
+                    });
+                    setProductos(nuevos);
+                    setSeleccionados(new Set());
+                    addLog(`Margen ${m}% a ${seleccionados.size} productos`);
+                    push(`Margen aplicado a seleccionados`);
+                  }} className="h-9 px-4 rounded-lg bg-white border font-bold text-xs">Aplicar a seleccionados</button>
+                  <button onClick={()=>setSeleccionados(new Set())} className="h-9 px-3 rounded-lg bg-gray-100 text-xs">Limpiar sel.</button>
+                </div>
+              </div>
+              <div className="overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-[#F0F2F5] text-[11px] font-bold text-gray-600">
+                    <tr><th className="p-3"><input type="checkbox" checked={seleccionados.size===productosStockFiltrados.length && productosStockFiltrados.length>0} onChange={e=>{ if(e.target.checked) setSeleccionados(new Set(productosStockFiltrados.map(p=>p.id))); else setSeleccionados(new Set()); }}/></th><th className="text-left p-3">Producto</th><th className="text-left p-3">Código</th><th className="text-right p-3">Precio</th><th className="text-right p-3">Costo</th><th className="text-right p-3">Stock</th><th className="text-right p-3">Valorizado</th><th className="p-3"></th></tr>
+                  </thead>
+                  <tbody>
+                    {stockPaginaActual.map(p=> (
+                      <tr key={p.id} className="border-t hover:bg-gray-50">
+                        <td className="p-3"><input type="checkbox" checked={seleccionados.has(p.id)} onChange={e=>{
+                          const ns=new Set(seleccionados);
+                          if(e.target.checked) ns.add(p.id); else ns.delete(p.id);
+                          setSeleccionados(ns);
+                        }}/></td>
+                        <td className="p-3 font-medium">{p.nombre}<div className="text-[10px] text-gray-400">{p.categoria}</div></td>
+                        <td className="p-3 font-mono text-[11px]">{p.codigo}</td>
+                        <td className="p-3 text-right font-bold">{fmtMoney(p.precio)}</td>
+                        <td className="p-3 text-right text-gray-500">{fmtMoney(p.costo)}</td>
+                        <td className="p-3 text-right"><span className={`px-2 py-0.5 rounded-full font-bold ${p.stock===0?"bg-red-100 text-red-700": p.stock<10?"bg-red-50 text-red-600": p.stock<20?"bg-amber-100 text-amber-700":"bg-emerald-50 text-emerald-700"}`}>{p.stock}</span></td>
+                        <td className="p-3 text-right font-bold">{fmtMoney(p.precio*p.stock)}</td>
+                        <td className="p-3 text-right">{esDueno && <button onClick={()=>setProdEdit({...p})} className="w-7 h-7 rounded-lg bg-white border flex items-center justify-center hover:bg-gray-50">á</button>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {stockPaginas>1 && (
+                <div className="p-3 flex items-center justify-between border-t text-xs">
+                  <button onClick={()=>setStockPag(s=>Math.max(0,s-1))} disabled={stockPag===0} className="px-3 py-2 rounded-lg bg-gray-100 disabled:opacity-40">? Anterior</button>
+                  <span>Pág {stockPag+1} de {stockPaginas} • {productosStockFiltrados.length} prod.</span>
+                  <button onClick={()=>setStockPag(s=>Math.min(stockPaginas-1,s+1))} disabled={stockPag>=stockPaginas-1} className="px-3 py-2 rounded-lg bg-gray-100 disabled:opacity-40">Siguiente á</button>
+                </div>
+              )}
+              {!esDueno && <div className="p-3 text-center text-xs text-amber-700 bg-amber-50 border-t">Edición solo dueño</div>}
+
+              {prodEdit && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-[420px] shadow-xl">
+                    <div className="font-bold text-[15px] mb-4">{productos.find(p=>p.id===prodEdit.id)?"Editar producto":"Nuevo producto"}</div>
+                    <div className="space-y-3">
+                      <input value={prodEdit.nombre} onChange={e=>setProdEdit({...prodEdit, nombre:e.target.value})} placeholder="Nombre (mín 3 car.)" className="w-full h-10 px-3 rounded-lg border text-sm"/>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input value={prodEdit.codigo} onChange={e=>setProdEdit({...prodEdit, codigo:e.target.value.replace(/\D/g,"")})} placeholder="Código 6-14 dígitos" className="h-10 px-3 rounded-lg border text-sm font-mono"/>
+                        <select value={prodEdit.categoria} onChange={e=>setProdEdit({...prodEdit, categoria:e.target.value})} className="h-10 px-3 rounded-lg border text-sm">
+                          {Array.from(new Set(["Almacen","Lacteos","Bebidas","Panificados","Fiambres","Granja","Golosinas", prodEdit.categoria])) .map(c=> <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <label className="text-xs">Precio<input type="number" value={prodEdit.precio} onChange={e=>setProdEdit({...prodEdit, precio:parseInt(e.target.value)||0})} className="w-full h-10 px-3 rounded-lg border text-sm mt-1"/></label>
+                        <label className="text-xs">Costo<input type="number" value={prodEdit.costo} onChange={e=>setProdEdit({...prodEdit, costo:parseInt(e.target.value)||0})} className="w-full h-10 px-3 rounded-lg border text-sm mt-1"/></label>
+                        <label className="text-xs">Stock<input type="number" value={prodEdit.stock} onChange={e=>setProdEdit({...prodEdit, stock:parseInt(e.target.value)||0})} className="w-full h-10 px-3 rounded-lg border text-sm mt-1"/></label>
+                      </div>
+                      <div className="text-[11px] text-gray-500">Margen: {prodEdit.precio? (((prodEdit.precio-prodEdit.costo)/prodEdit.precio*100).toFixed(1)):0}% ? Valorizado: {fmtMoney(prodEdit.precio*prodEdit.stock)}</div>
+                      <div className="flex gap-2 pt-2">
+                        <button onClick={()=>setProdEdit(null)} className="flex-1 h-10 rounded-lg bg-gray-100 font-semibold text-sm">Cancelar</button>
+                        <button onClick={()=>guardarProducto(prodEdit)} className="flex-1 h-10 rounded-lg bg-[#00387A] text-white font-bold text-sm">🕐 Guardar</button>
+                      </div>
+                      {productos.find(p=>p.id===prodEdit.id) && (
+                        <button onClick={()=>{
+                          if(!confirm("áEliminar producto?")) return;
+                          setProductos(s=> s.filter(x=>x.id!==prodEdit.id));
+                          fbDeleteProducto(prodEdit.id);
+                          addLog(`Eliminó producto ${prodEdit.nombre}`);
+                          push("Producto eliminado");
+                          setProdEdit(null);
+                        }} className="w-full h-9 rounded-lg bg-red-50 text-red-600 border border-red-100 font-semibold text-xs">Eliminar producto</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* FIADOS */}
+          {tab==="fiados" && (
+            <div className="space-y-4">
+              <div className="bg-[#1A1A2E] text-white rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs opacity-70 font-bold tracking-widest">DEUDA TOTAL BARRIO</div>
+                  <div className="text-[36px] font-black">{fmtMoney(deudaTotal)}</div>
+                  <div className="text-xs opacity-70">{fiados.length} clientes ? Promedio {fmtMoney(fiados.length? deudaTotal/fiados.length:0)} ? Morosos &gt;80% límite: {fiados.filter(f=> f.deuda>f.limite*0.8).length}</div>
+                </div>
+                <button onClick={()=>{
+                  const nombre=prompt("Nombre cliente fiado:");
+                  if(!nombre || nombre.trim().length<2){ push("Nombre inválido","error"); return; }
+                  const tel=prompt("Teléfono:")||"";
+                  const limiteStr=prompt("Límite (default 30000):")||"30000";
+                  const limite=parseInt(limiteStr)||30000;
+                  const nf={id:Date.now().toString(), nombre:nombre.trim(), telefono:tel, deuda:0, limite, historial:[]};
+                  setFiados(s=> [...s,nf]); fbSaveFiado(nf); addLog(`Nuevo fiado ${nombre}`); push("Cliente creado");
+                }} className="h-11 px-5 rounded-xl bg-white text-[#1A1A2E] font-bold text-sm">+ Nuevo fiado</button>
+              </div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {fiados.map(f=> (
+                  <div key={f.id} className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-bold text-sm">{f.nombre}</div>
+                        <div className="text-[11px] text-gray-500">{f.telefono} ? Límite {fmtMoney(f.limite)}</div>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-full text-[11px] font-black ${f.deuda>f.limite?"bg-red-600 text-white": f.deuda>f.limite*0.8?"bg-red-100 text-red-700": f.deuda>f.limite*0.5?"bg-amber-100 text-amber-700":"bg-emerald-50 text-emerald-700"}`}>{fmtMoney(f.deuda)} {f.deuda>f.limite && "á?"}</div>
+                    </div>
+                    <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full ${f.deuda>f.limite?"bg-red-500": f.deuda>f.limite*0.8?"bg-red-400":"bg-[#00387A]"}`} style={{width:`${Math.min(100, f.deuda/f.limite*100)}%`}}/></div>
+                    <div className="mt-1 text-[11px] text-gray-500">{((f.deuda/f.limite)*100).toFixed(0)}% del límite</div>
+                    <div className="mt-3 flex gap-2">
+                      <button onClick={()=>setCobroModal({id:f.id, monto:""})} className="flex-1 h-9 rounded-xl bg-[#00387A] text-white font-bold text-xs">🕐 Cobrar</button>
+                      <button onClick={()=>{
+                        const nt=prompt("Nuevo teléfono",f.telefono);
+                        if(nt!==null){ const nf={...f, telefono:nt}; setFiados(s=> s.map(x=> x.id===f.id? nf:x)); fbSaveFiado(nf); }
+                      }} className="h-9 px-3 rounded-xl bg-gray-100 font-semibold text-[11px]">Editar</button>
+                      <button onClick={()=>{
+                        const nl=prompt("Nuevo límite", String(f.limite));
+                        if(nl!==null){ const lim=parseInt(nl); if(lim>0){ const nf={...f, limite:lim}; setFiados(s=> s.map(x=>x.id===f.id? nf:x)); fbSaveFiado(nf); }}
+                      }} className="h-9 px-3 rounded-xl bg-gray-100 font-semibold text-[11px]">Límite</button>
+                    </div>
+                    <div className="mt-3 space-y-1 max-h-[80px] overflow-auto scroll-thin">
+                      {f.historial.slice(-4).reverse().map((h,i)=> (
+                        <div key={i} className="text-[10px] text-gray-500 flex justify-between">
+                          <span>{new Date(h.fecha).toLocaleDateString()} {h.tipo} {h.desc.slice(0,20)}</span>
+                          <span className={`font-bold ${h.tipo==="pago"?"text-emerald-600":"text-red-600"}`}>{h.tipo==="pago"?"-":"+"}{fmtMoney(h.monto)}</span>
+                        </div>
+                      ))}
+                      {f.historial.length===0 && <div className="text-[11px] text-gray-400">Sin movimientos</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {cobroModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-[360px]">
+                    <div className="font-bold mb-1">Cobrar fiado</div>
+                    <div className="text-xs text-gray-500 mb-3">{fiados.find(f=>f.id===cobroModal.id)?.nombre} ? Debe {fmtMoney(fiados.find(f=>f.id===cobroModal.id)?.deuda||0)}</div>
+                    <input type="number" value={cobroModal.monto} onChange={e=>setCobroModal({...cobroModal, monto:e.target.value})} placeholder="Monto pago" autoFocus className="w-full h-11 px-3 rounded-xl border text-sm mb-3"/>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setCobroModal(null)} className="flex-1 h-10 rounded-xl bg-gray-100 font-semibold">Cancelar</button>
+                      <button onClick={cobrarFiado} className="flex-1 h-10 rounded-xl bg-[#00387A] text-white font-bold">? Cobrar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CIERRES */}
+          {tab==="cierres" && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl border border-black/5 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="font-black text-[16px]">CIERRE DE HOY</div>
+                  <div className="text-xs text-gray-500">{new Date().toLocaleDateString("es-AR")} • {ventasHoy.length} ventas</div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-xl bg-[#F0F2F5] p-3"><div className="text-[11px] font-bold text-gray-500">EFECTIVO</div><div className="text-[18px] font-black">{fmtMoney(ventasHoy.filter(v=>v.metodo==="efectivo").reduce((s,v)=>s+v.total,0))}</div><div className="text-[11px] text-gray-500">{ventasHoy.filter(v=>v.metodo==="efectivo").length} tickets</div></div>
+                  <div className="rounded-xl bg-[#F0F2F5] p-3"><div className="text-[11px] font-bold text-gray-500">TRANSFER</div><div className="text-[18px] font-black">{fmtMoney(ventasHoy.filter(v=>v.metodo==="transferencia").reduce((s,v)=>s+v.total,0))}</div><div className="text-[11px] text-gray-500">{ventasHoy.filter(v=>v.metodo==="transferencia").length} tickets</div></div>
+                  <div className="rounded-xl bg-amber-50 p-3 border border-amber-100"><div className="text-[11px] font-bold text-amber-700">FIADO</div><div className="text-[18px] font-black text-amber-700">{fmtMoney(ventasHoy.filter(v=>v.metodo==="fiado").reduce((s,v)=>s+v.total,0))}</div><div className="text-[11px] text-amber-600">{ventasHoy.filter(v=>v.metodo==="fiado").length} tickets</div></div>
+                  <div className="rounded-xl bg-[#00387A] text-white p-3"><div className="text-[11px] font-bold opacity-70">TOTAL</div><div className="text-[18px] font-black">{fmtMoney(totalHoy)}</div><div className="text-[11px] opacity-70">Ganancia {fmtMoney(gananciaHoy)}</div></div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button onClick={()=>{
+                    const c={id:Date.now().toString(), fecha:new Date().toISOString(), total:totalHoy, ganancia:gananciaHoy, ventas:ventasHoy.length, detalle:{
+                      efectivo:ventasHoy.filter(v=>v.metodo==="efectivo").reduce((s,v)=>s+v.total,0),
+                      trans:ventasHoy.filter(v=>v.metodo==="transferencia").reduce((s,v)=>s+v.total,0),
+                      fiado:ventasHoy.filter(v=>v.metodo==="fiado").reduce((s,v)=>s+v.total,0)
+                    }};
+                    setCierres(s=>[c,...s]);
+                    try{ firestoreRef.current?.collection("cierres").doc(c.id).set(c);}catch{}
+                    addLog(`Cierre hoy ${fmtMoney(totalHoy)}`);
+                    push(`Cierre guardado: ${fmtMoney(totalHoy)}`);
+                  }} className="h-11 px-6 rounded-xl bg-[#1A1A2E] text-white font-bold text-sm">Cerrar caja de hoy + Guardar historial</button>
+                  <button onClick={()=>{
+                    const csv=["fecha,hora,total,metodo,usuario","..."];
+                    push("Cierre impreso (usa Ctrl+P para ticket)");
+                    window.print();
+                  }} className="h-11 px-6 rounded-xl bg-white border font-bold text-sm">🕐? Imprimir</button>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+                <div className="font-bold text-[13px] mb-3">HISTORIAL DE CIERRES</div>
+                <div className="space-y-2">
+                  {cierres.length===0 && <div className="text-sm text-gray-400 py-6 text-center">Sin cierres aán</div>}
+                  {cierres.map(c=> (
+                    <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-[#F0F2F5] border text-xs">
+                      <div><span className="font-bold">{new Date(c.fecha).toLocaleString("es-AR")}</span> - {c.ventas} ventas ? Ef {fmtMoney(c.detalle?.efectivo)} ? Tr {fmtMoney(c.detalle?.trans)} ? Fi {fmtMoney(c.detalle?.fiado)}</div>
+                      <div className="font-black">{fmtMoney(c.total)} / Gan {fmtMoney(c.ganancia)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SEGURIDAD */}
+          {tab==="seguridad" && (
+            <div className="space-y-4 max-w-[720px]">
+              <div className="bg-white rounded-2xl border border-black/5 p-5 shadow-sm">
+                <div className="font-black text-[15px] mb-3 flex items-center gap-2">🕐? SEGURIDAD</div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#F0F2F5] border">
+                    <div><div className="font-bold text-sm">Mi contraseña ({usuarioActual?.user})</div><div className="text-[11px] text-gray-500">Cifrada SHA-256 ? Cambiar clave personal</div></div>
+                    <button onClick={()=>setCambioPassOpen(true)} className="h-9 px-4 rounded-lg bg-white border font-bold text-xs">Cambiar</button>
+                  </div>
+                  {esDueno && (
+                    <div>
+                      <div className="font-bold text-xs mt-4 mb-2">Gestión usuarios (solo dueño)</div>
+                      {usuarios.map(u=> (
+                        <div key={u.user} className="flex items-center justify-between p-3 rounded-xl bg-white border mb-2">
+                          <div><span className="font-bold text-sm">{u.user}</span> <span className="text-[11px] text-gray-500">{u.rol} - {u.nombre} {u.pass.length===64?"🕐 hash":"🕐 plain"}</span></div>
+                          <div className="flex gap-2">
+                            <button onClick={()=>{setEditUserPass(u.user); setEditUserPassVal("");}} className="h-8 px-3 rounded-lg bg-[#00387A] text-white font-bold text-[11px]">Clave</button>
+                            <button onClick={async()=>{
+                              if(!confirm(`Reset ${u.user} a 1234?`)) return;
+                              const h=await hashPass("1234");
+                              setUsuarios(s=> s.map(x=> x.user===u.user? {...x, pass:h}:x));
+                              addLog(`Reset pass ${u.user}`); push(`Clave de ${u.user} reseteada a 1234`);
+                            }} className="h-8 px-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[11px]">Reset</button>
+                            <button onClick={async()=>{
+                              if(u.user===user){ push("No podás borrar tu propio usuario","error"); return; }
+                              const duenos = usuarios.filter(x=> x.rol==="dueño").length;
+                              if(u.rol==="dueño" && duenos<=1){ push("No se puede borrar el áltimo dueño","error"); return; }
+                              if(!confirm(`¿Borrar usuario ${u.user} (${u.nombre})? Esta accián no se puede deshacer.`)) return;
+                              const conf = prompt(`Escrib? BORRAR para confirmar:`);
+                              if(conf!=="BORRAR"){ push("Cancelado","warn"); return; }
+                              setUsuarios(s=> s.filter(x=> x.user!==u.user));
+                              addLog(`Borr? usuario ${u.user}`); push(`Usuario ${u.user} borrado`);
+                            }} className="h-8 px-3 rounded-lg bg-red-50 border border-red-200 text-red-700 font-bold text-[11px]">🕐 Borrar</button>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={()=>{
+                        const user=prompt("Nuevo usuario (ej: pedro):");
+                        if(!user || usuarios.find(x=>x.user===user)){ push("Usuario ya existe o vacáo","error"); return; }
+                        const nombre=prompt("Nombre:")||user;
+                        const rol=confirm("áEs dueño? OK=dueño, Cancel=empleado")?"dueño":"empleado";
+                        hashPass("1234").then(h=>{
+                          setUsuarios(s=>[...s, {user, pass:h, rol, nombre}]);
+                          push(`Usuario ${user} creado con clave 1234`);
+                        });
+                      }} className="mt-2 h-9 px-4 rounded-lg bg-[#00387A] text-white font-bold text-xs">+ Nuevo usuario</button>
+                    </div>
+                  )}
+                  <div className="text-[11px] text-gray-500 p-2 bg-gray-50 rounded-lg">Inactividad: 15min auto-logout ? Bloqueo login 30s tras 3 fallos ? Claves hasheadas SHA-256 ? Backup auto 5min</div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-black/5 p-4 shadow-sm">
+                <div className="font-bold text-xs mb-2">LOG ACTIVIDAD (áltimos 50)</div>
+                <div className="space-y-1 max-h-[300px] overflow-auto scroll-thin">
+                  {logs.slice(0,50).map((l,i)=> (
+                    <div key={i} className="text-[11px] flex gap-2 border-b border-gray-50 py-1">
+                      <span className="text-gray-400 font-mono">{new Date(l.fecha).toLocaleString("es-AR")}</span>
+                      <span className="font-bold">{l.usuario}</span>
+                      <span>{l.accion}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {cambioPassOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-[360px]">
+                    <div className="font-bold mb-3">Cambiar mi contraseña</div>
+                    <input type="password" value={nuevaPass} onChange={e=>setNuevaPass(e.target.value)} placeholder="Nueva clave (mín 4)" className="w-full h-11 px-3 rounded-xl border text-sm mb-3"/>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setCambioPassOpen(false)} className="flex-1 h-10 rounded-xl bg-gray-100 font-semibold">Cancelar</button>
+                      <button onClick={async()=>{
+                        if(nuevaPass.length<4){ push("Mán 4 caracteres","error"); return; }
+                        const h=await hashPass(nuevaPass);
+                        setUsuarios(s=> s.map(x=> x.user===user? {...x, pass:h}:x));
+                        addLog("Cambio mi contraseña"); setNuevaPass(""); setCambioPassOpen(false); push("Contraseña cambiada ?");
+                      }} className="flex-1 h-10 rounded-xl bg-[#00387A] text-white font-bold">Guardar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {editUserPass && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-[360px]">
+                    <div className="font-bold mb-3">Cambiar clave de {editUserPass}</div>
+                    <input value={editUserPassVal} onChange={e=>setEditUserPassVal(e.target.value)} placeholder="Nueva clave" className="w-full h-11 px-3 rounded-xl border text-sm mb-3" type="password"/>
+                    <div className="flex gap-2">
+                      <button onClick={()=>setEditUserPass(null)} className="flex-1 h-10 rounded-xl bg-gray-100 font-semibold">Cancelar</button>
+                      <button onClick={async()=>{
+                        if(editUserPassVal.length<4){ push("Mán 4 car","error"); return; }
+                        const h=await hashPass(editUserPassVal);
+                        setUsuarios(s=> s.map(x=> x.user===editUserPass? {...x, pass:h}:x));
+                        addLog(`Dueño cambi? clave ${editUserPass}`); setEditUserPass(null); push("Clave actualizada");
+                      }} className="flex-1 h-10 rounded-xl bg-[#00387A] text-white font-bold">Guardar</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DB */}
+          {tab==="db" && (
+            <div className="space-y-4 max-w-[720px]">
+              <div className="bg-white rounded-2xl border border-black/5 p-5 shadow-sm">
+                <div className="font-black text-[15px] mb-3 flex items-center gap-2">🕐? BASE DE DATOS</div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className={`p-4 rounded-xl border ${estadoNube==="conectado"?"bg-emerald-50 border-emerald-200":"bg-amber-50 border-amber-200"}`}>
+                    <div className="flex items-center gap-2 font-bold text-[13px]">{estadoNube==="conectado"?"? Estado nube: Conectada":"? Estado nube: Local"} {estadoNube==="conectado"?"?":"á?"}</div>
+                    <div className="mt-1 text-xs font-medium">{estadoNube==="conectado"?"En vivo (onSnapshot activo)": estadoNube==="conectando"?"Conectando a Firestore...": estadoNube==="error"?"Error conexián - trabajando local":"Modo Local - sin Firebase CDN"}</div>
+                    <div className="mt-2 text-[11px] text-gray-600">Project: almacen-buendia ? Colecciones: productos, ventas, clientesFiado, cierres</div>
+                    <div className="mt-2 text-[11px]">Productos: {productos.length} ? Ventas: {ventas.length} ? Fiados: {fiados.length} ? Cierres: {cierres.length}</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#F0F2F5] border">
+                    <div className="font-bold text-xs">BACKUP AUTO</div>
+                    <div className="text-[11px] text-gray-600 mt-1">Cada 5 min guarda en localStorage bd_backup_auto + persistencia inmediata por cambio.</div>
+                    <div className="mt-2 text-[11px] font-mono">áltimo backup: {(() => { try{ const b=JSON.parse(localStorage.getItem("bd_backup_auto")); return b? new Date(b.fecha).toLocaleString("es-AR"):"?"; }catch{return "?"}})()}</div>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button onClick={sincronizarAhora} className="h-11 px-5 rounded-xl bg-[#00387A] text-white font-bold text-sm">🕐 Sincronizar Ahora</button>
+                  <button onClick={()=>{
+                    const data={productos, ventas, fiados, usuarios, cierres, logs, fecha:new Date().toISOString()};
+                    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+                    const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`backup-buendia-${hoyISO()}.json`; a.click(); push("Backup JSON descargado");
+                  }} className="h-11 px-5 rounded-xl bg-white border font-bold text-sm">? Export JSON</button>
+                  <label className="h-11 px-5 rounded-xl bg-[#1A1A2E] text-white font-bold text-sm flex items-center gap-2 cursor-pointer">
+                    ? Import JSON <input type="file" accept=".json" className="hidden" onChange={e=>{
+                      const f=e.target.files?.[0]; if(!f) return;
+                      const r=new FileReader();
+                      r.onload=()=>{ try{
+                        const d=JSON.parse(r.result);
+                        if(d.productos) setProductos(d.productos);
+                        if(d.ventas) setVentas(d.ventas);
+                        if(d.fiados) setFiados(d.fiados);
+                        if(d.usuarios) setUsuarios(d.usuarios);
+                        push("Importado local, sincroniz? para subir a nube"); addLog("Import JSON DB");
+                      }catch{ push("JSON inválido","error") }};
+                      r.readAsText(f);
+                    }}/>
+                  </label>
+                  <button onClick={()=>{
+                    if(!confirm("áResetear datos de DEMO? Mantiene usuarios.")) return;
+                    setProductos(SEED_PRODUCTOS); setVentas([]); setFiados(SEED_FIADOS); setCierres([]); push("Datos reseteados a demo");
+                  }} className="h-11 px-5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 font-bold text-sm">? Reset Demo</button>
+                </div>
+                <div className="mt-4 p-3 rounded-xl bg-gray-900 text-green-300 font-mono text-[11px] overflow-auto">
+                  <div>// Firebase config</div>
+                  <div>projectId: {FIREBASE_CONFIG.projectId}</div>
+                  <div>status: {estadoNube}</div>
+                  <div>window.firebase: {typeof window!=="undefined" && window.firebase? "cargado ?":"no cargado - modo local"}</div>
+                  <div>hash pass: SHA-256 (Web Crypto)</div>
+                  <div>validaciones: stock, límite fiado, código ánico</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* TICKET MODAL */}
+      {ventaTicket && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 no-print">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-[380px] shadow-xl">
+            <div className="text-center border-b pb-3 mb-3">
+              <div className="font-black">ALMACáN BUEN DáA</div>
+              <div className="text-xs text-gray-500">Ticket • {ventaTicket.fecha} {ventaTicket.hora} • {ventaTicket.usuario}</div>
+              <div className="text-[11px] font-mono">#{ventaTicket.id.slice(-6)} • {ventaTicket.metodo.toUpperCase()} {ventaTicket.clienteFiado? "? Fiado":""}</div>
+            </div>
+            <div className="space-y-1 text-sm">
+              {ventaTicket.items.map(it=> (
+                <div key={it.id} className="flex justify-between"><span>{it.cantidad}x {it.nombre.slice(0,22)}</span><span className="font-bold">{fmtMoney(it.precio*it.cantidad)}</span></div>
+              ))}
+              {ventaTicket.esPagoFiado && <div className="text-xs text-blue-600">Pago de deuda fiado</div>}
+            </div>
+            <div className="border-t mt-3 pt-3 flex justify-between font-black text-lg">TOTAL <span>{fmtMoney(ventaTicket.total)}</span></div>
+            <div className="mt-4 flex gap-2 no-print">
+              <button onClick={()=>setVentaTicket(null)} className="flex-1 h-10 rounded-xl bg-gray-100 font-semibold">Cerrar</button>
+              <button onClick={()=>window.print()} className="flex-1 h-10 rounded-xl bg-[#00387A] text-white font-bold">🕐? Imprimir</button>
+            </div>
+            <div className="hidden print:block text-center text-[11px] mt-4">áGracias por su compra!</div>
+          </div>
+        </div>
+      )}
+
+      <style>{`@import url('https://fonts.googleapis.com/css2áfamily=Inter:wght@400;500;700;800;900&display=swap');`}</style>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
