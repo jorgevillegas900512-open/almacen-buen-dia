@@ -588,7 +588,7 @@ function App(){
               <div className="relative mt-1">
                 <input type={showPass?"text":"password"} value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=> e.key==="Enter" && handleLogin()}
                   placeholder="••••" className="w-full h-11 pl-3 pr-10 rounded-lg border border-gray-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none text-sm"/>
-                <button onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">{showPass?"á?":"🕐?"}</button>
+                <button onClick={()=>setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">{showPass?"🙈":"👁️"}</button>
               </div>
             </div>
             {bloqueoHasta && (
@@ -656,13 +656,13 @@ function App(){
         {/* SIDEBAR */}
         <aside className="w-[280px] bg-gradient-to-b from-slate-900 to-slate-800 text-white hidden md:flex flex-col shrink-0">
           <nav className="p-3 space-y-1 mt-2">
-            <NavItem k="pos" label="Punto de Venta" icon="á?"/>
-            <NavItem k="dashboard" label="Dashboard" icon="á?"/>
-            <NavItem k="stock" label="Stock" icon="á?"/>
-            <NavItem k="fiados" label="Fiados" icon="á?"/>
-            <NavItem k="cierres" label="Cierres" icon="á?"/>
-            <NavItem k="seguridad" label="Seguridad" icon="🕐?"/>
-            <NavItem k="db" label="Base de Datos" icon="🕐?"/>
+            <NavItem k="pos" label="Punto de Venta" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>}/>
+            <NavItem k="dashboard" label="Dashboard" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>}/>
+            <NavItem k="stock" label="Stock" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>}/>
+            <NavItem k="fiados" label="Fiados" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/></svg></span>}/>
+            <NavItem k="cierres" label="Cierres" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>}/>
+            <NavItem k="seguridad" label="Seguridad" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>}/>
+            <NavItem k="db" label="Base de Datos" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>}/>
           </nav>
           <div className="mt-auto p-4">
             <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
@@ -678,13 +678,13 @@ function App(){
         {/* MOBILE NAV */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 text-white flex z-30 border-t border-white/10 overflow-x-auto">
           {[
-            {k:"pos", label:"POS", icon:"á?"},
-            {k:"dashboard", label:"Dash", icon:"á?"},
-            {k:"stock", label:"Stock", icon:"á?"},
-            {k:"fiados", label:"Fiados", icon:"á?"},
-            {k:"cierres", label:"Cierres", icon:"á?"},
-            {k:"seguridad", label:"Seg", icon:"🕐?"},
-            {k:"db", label:"DB", icon:"🕐?"},
+            {k:"pos", label:"POS", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>},
+            {k:"dashboard", label:"Dash", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>},
+            {k:"stock", label:"Stock", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>},
+            {k:"fiados", label:"Fiados", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/></svg></span>},
+            {k:"cierres", label:"Cierres", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></span>},
+            {k:"seguridad", label:"Seg", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>},
+            {k:"db", label:"DB", icon:<span className="flex justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>},
           ].map(i=> (
             <button key={i.k} onClick={()=>setTab(i.k)} className={`flex-1 py-2.5 flex flex-col items-center gap-1 text-[10px] ${tab===i.k?"text-white bg-white/10":"text-white/60"}`}>
               <span className="text-[16px]">{i.icon}</span>{i.label}
@@ -809,9 +809,9 @@ function App(){
                   <div className="p-3 border-t space-y-3 bg-white">
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        {k:"efectivo", label:"Efectivo", icon:"á?"},
-                        {k:"transferencia", label:"Transfer", icon:"á?"},
-                        {k:"fiado", label:"Fiado", icon:"á?"},
+                        {k:"efectivo", label:"Efectivo", icon:"💵"},
+                        {k:"transferencia", label:"Transfer", icon:"📈"},
+                        {k:"fiado", label:"Fiado", icon:"🤝"},
                       ].map(o=> (
                         <button key={o.k} onClick={()=>setMetodoPago(o.k)} className={`h-11 rounded-2xl border font-bold text-[11px] flex flex-col items-center justify-center gap-0.5 ${metodoPago===o.k?"bg-indigo-600 text-white border-indigo-600":"bg-white border-gray-200 text-gray-700"}`}>
                           <span>{o.icon}</span>{o.label}
@@ -821,7 +821,7 @@ function App(){
                     {metodoPago==="fiado" && (
                       <select value={clienteFiado} onChange={e=>setClienteFiado(e.target.value)} className="w-full h-11 rounded-2xl border border-gray-200 px-3 text-sm">
                         <option value="">Seleccionar cliente fiado...</option>
-                        {fiados.map(f=> <option key={f.id} value={f.id}>{f.nombre} - Debe {fmtMoney(f.deuda)} / Límite {fmtMoney(f.limite)} {f.deuda>f.limite*0.8?"á?":""}</option>)}
+                        {fiados.map(f=> <option key={f.id} value={f.id}>{f.nombre} - Debe {fmtMoney(f.deuda)} / Límite {fmtMoney(f.limite)} {f.deuda>f.limite*0.8?"⚠️":""}</option>)}
                       </select>
                     )}
                     <button onClick={cobrar} disabled={carrito.length===0} className="w-full h-[56px] rounded-2xl bg-indigo-600 text-white font-black text-[16px] tracking-wide hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg">
@@ -1104,7 +1104,7 @@ function App(){
                         <div className="font-bold text-sm">{f.nombre}</div>
                         <div className="text-[11px] text-gray-500">{f.telefono} ? Límite {fmtMoney(f.limite)}</div>
                       </div>
-                      <div className={`px-2.5 py-1 rounded-full text-[11px] font-black ${f.deuda>f.limite?"bg-red-600 text-white": f.deuda>f.limite*0.8?"bg-red-100 text-red-700": f.deuda>f.limite*0.5?"bg-amber-100 text-amber-700":"bg-emerald-50 text-emerald-700"}`}>{fmtMoney(f.deuda)} {f.deuda>f.limite && "á?"}</div>
+                      <div className={`px-2.5 py-1 rounded-full text-[11px] font-black ${f.deuda>f.limite?"bg-red-600 text-white": f.deuda>f.limite*0.8?"bg-red-100 text-red-700": f.deuda>f.limite*0.5?"bg-amber-100 text-amber-700":"bg-emerald-50 text-emerald-700"}`}>{fmtMoney(f.deuda)} {f.deuda>f.limite && "⚠️"}</div>
                     </div>
                     <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full ${f.deuda>f.limite?"bg-red-500": f.deuda>f.limite*0.8?"bg-red-400":"bg-indigo-600"}`} style={{width:`${Math.min(100, f.deuda/f.limite*100)}%`}}/></div>
                     <div className="mt-1 text-[11px] text-gray-500">{((f.deuda/f.limite)*100).toFixed(0)}% del límite</div>
@@ -1308,7 +1308,7 @@ function App(){
                 <div className="font-black text-[15px] mb-3 flex items-center gap-2">🕐? BASE DE DATOS</div>
                 <div className="grid md:grid-cols-2 gap-3">
                   <div className={`p-4 rounded-2xl border ${estadoNube==="conectado"?"bg-emerald-50 border-emerald-200":"bg-amber-50 border-amber-200"}`}>
-                    <div className="flex items-center gap-2 font-bold text-[13px]">{estadoNube==="conectado"?"? Estado nube: Conectada":"? Estado nube: Local"} {estadoNube==="conectado"?"?":"á?"}</div>
+                    <div className="flex items-center gap-2 font-bold text-[13px]">{estadoNube==="conectado"?"? Estado nube: Conectada":"? Estado nube: Local"} {estadoNube==="conectado"?"●":"○"}</div>
                     <div className="mt-1 text-xs font-medium">{estadoNube==="conectado"?"En vivo (onSnapshot activo)": estadoNube==="conectando"?"Conectando a Firestore...": estadoNube==="error"?"Error conexián - trabajando local":"Modo Local - sin Firebase CDN"}</div>
                     <div className="mt-2 text-[11px] text-gray-600">Project: almacen-buendia ? Colecciones: productos, ventas, clientesFiado, cierres</div>
                     <div className="mt-2 text-[11px]">Productos: {productos.length} ? Ventas: {ventas.length} ? Fiados: {fiados.length} ? Cierres: {cierres.length}</div>
