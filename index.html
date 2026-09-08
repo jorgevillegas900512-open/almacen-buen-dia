@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Almacén Buen Día — Moderno Pro</title>
+<title>Almacén Buen Día — Amigable Pro</title><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&display=swap" rel="stylesheet"><style>.font-display{font-family:Outfit,Inter,sans-serif}</style>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2áfamily=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>*{font-family:Inter,system-ui,sans-serif} .scroll-thin::-webkit-scrollbar{width:6px;height:6px} .scroll-thin::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px} @media print{.no-print{display:none!important} body{background:white!important}}</style>
@@ -12,7 +12,7 @@
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-gradient-to-br from-indigo-50/40 via-white to-amber-50/30 min-h-screen">
 <div id="root"></div>
 
 <script type="text/babel">
@@ -656,7 +656,7 @@ function App(){
         {/* SIDEBAR */}
         <aside className="w-[280px] bg-gradient-to-b from-slate-900 to-slate-800 text-white hidden md:flex flex-col shrink-0">
           <nav className="p-3 space-y-1 mt-2">
-            <NavItem k="pos" label="Punto de Venta" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>}/>
+            <NavItem k="pos" label="Punto de Venta ?" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>}/>
             <NavItem k="dashboard" label="Dashboard" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>}/>
             <NavItem k="stock" label="Stock" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>}/>
             <NavItem k="fiados" label="Fiados" icon={<span className="w-5 h-5 flex items-center justify-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/></svg></span>}/>
@@ -703,7 +703,7 @@ function App(){
                   <div className="flex flex-col md:flex-row gap-3">
                     <div className="flex-1 relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🕐</span>
-                      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar producto (nombre, código, categoría)..." className="w-full h-12 pl-10 pr-3 rounded-2xl border border-gray-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none text-sm"/>
+                      <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscá por nombre o escaneá el código... ✨" className="w-full h-12 pl-10 pr-3 rounded-2xl border border-gray-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none text-sm"/>
                     </div>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -751,13 +751,13 @@ function App(){
                     ))}
                   </div>
                   <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-2">
-                    <span className="px-2 py-1 rounded-full bg-gray-100">Stock se valida antes de agregar</span>
+                    <span className="px-2 py-1 rounded-full bg-gray-100">? Stock validado automáticamente</span>
                     <span className="px-2 py-1 rounded-full bg-red-50 text-red-600 border border-red-100">Límite fiado validado</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {productosFiltrados.length===0 && <div className="col-span-2 py-8 text-center text-gray-400 text-sm bg-white rounded-2xl border border-dashed">Sin productos para "{busqueda || filtroLetra}"</div>}
+                  {productosFiltrados.length===0 && <div className="col-span-2 py-8 text-center text-gray-400 text-sm bg-white rounded-2xl border border-dashed">Ups, no encontramos nada para "{busqueda || filtroLetra}"</div>}
                   {productosFiltrados.map(p=> (
                     <button key={p.id} onClick={()=>agregarAlCarrito(p)} className="bg-white rounded-2xl border border-slate-200 p-3 text-left hover:border-indigo-600/30 hover:shadow-sm shadow-slate-200/50 transition flex justify-between items-center">
                       <div className="min-w-0">
@@ -786,7 +786,7 @@ function App(){
                     </div>
                   </div>
                   <div className="p-3 space-y-2 max-h-[300px] overflow-auto scroll-thin">
-                    {carrito.length===0 && <div className="py-10 text-center text-gray-400 text-sm">Carrito vacáo - toc? un producto</div>}
+                    {carrito.length===0 && <div className="py-10 text-center text-gray-400 text-sm">¡Tu carrito está esperando! 🛒</div>}
                     {carrito.map(it=> (
                       <div key={it.id} className="flex items-center gap-2 p-2 rounded-2xl bg-slate-50 border border-slate-200">
                         <div className="flex-1 min-w-0">
@@ -840,22 +840,22 @@ function App(){
               {!esDueno && <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-2xl text-sm">Dashboard completo solo para dueño. Vista limitada.</div>}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm shadow-slate-200/50">
-                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">VENTAS HOY</div>
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">Ventas de hoy ??</div>
                   <div className="text-[28px] font-black text-slate-900">{fmtMoney(totalHoy)}</div>
                   <div className="text-[11px] text-gray-500">{ventasHoy.length} tickets ? Prom {fmtMoney(promedioHoy|0)}</div>
                 </div>
                 <div className="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm shadow-slate-200/50">
-                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">GANANCIA HOY</div>
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">Ganancia de hoy ??</div>
                   <div className="text-[28px] font-black text-emerald-600">{fmtMoney(gananciaHoy)}</div>
                   <div className="text-[11px] text-gray-500">{totalHoy?((gananciaHoy/totalHoy*100).toFixed(1)):0}% margen</div>
                 </div>
                 <div className="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm shadow-slate-200/50">
-                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">STOCK VALORIZADO</div>
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">Tu stock vale ??</div>
                   <div className="text-[28px] font-black text-indigo-600">{fmtMoney(valorizado)}</div>
                   <div className="text-[11px] text-gray-500">Costo {fmtMoney(costoValorizado)}</div>
                 </div>
                 <div className="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm shadow-slate-200/50">
-                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">FIADOS BARRIO</div>
+                  <div className="text-[11px] font-bold text-gray-500 tracking-widest">Fiados del barrio ??</div>
                   <div className="text-[28px] font-black text-amber-600">{fmtMoney(deudaTotal)}</div>
                   <div className="text-[11px] text-gray-500">{fiados.length} clientes ? Bajo stock: {productos.filter(p=>p.stock<=10).length}</div>
                 </div>
@@ -928,10 +928,10 @@ function App(){
             <div className="bg-white rounded-[20px] border border-slate-200 shadow-sm shadow-slate-200/50 overflow-hidden">
               <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b">
                 <div>
-                  <div className="font-black text-[16px]">STOCK - {productos.length} productos</div>
+                  <div className="font-black text-[16px]">Tu Stock á {productos.length} productos</div>
                   <div className="text-xs text-gray-500">Valorizado {fmtMoney(valorizado)} ? Costo {fmtMoney(costoValorizado)} ? Ganancia potencial {fmtMoney(valorizado-costoValorizado)} ? Bajo stock (&le;10): {productos.filter(p=>p.stock<=10).length}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <input value={stockSearch} onChange={e=>{setStockSearch(e.target.value); setStockPag(0)}} placeholder="Buscar en stock..." className="h-9 px-3 rounded-lg border text-sm w-[220px]"/>
+                    <input value={stockSearch} onChange={e=>{setStockSearch(e.target.value); setStockPag(0)}} placeholder="Buscá en tu stock... ??" className="h-9 px-3 rounded-lg border text-sm w-[220px]"/>
                     <select value={stockCat} onChange={e=>{setStockCat(e.target.value); setStockPag(0)}} className="h-9 px-2 rounded-lg border text-sm">
                       {categorias.map(c=> <option key={c} value={c}>{c}</option>)}
                     </select>
@@ -1236,7 +1236,7 @@ function App(){
                       ))}
                       <button onClick={()=>{
                         const user=prompt("Nuevo usuario (ej: pedro):");
-                        if(!user || usuarios.find(x=>x.user===user)){ push("Usuario ya existe o vacáo","error"); return; }
+                        if(!user || usuarios.find(x=>x.user===user)){ push("Usuario ya existe o vacío","error"); return; }
                         const nombre=prompt("Nombre:")||user;
                         const rol=confirm("áEs dueño? OK=dueño, Cancel=empleado")?"dueño":"empleado";
                         hashPass("1234").then(h=>{
